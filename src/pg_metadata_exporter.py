@@ -4,10 +4,8 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
 from config.pg_config import PgConfig
-from utils.mask_string import mask_string
 
 # Module logger configuration (verbose to console)
 logger = logging.getLogger(__name__)
@@ -25,7 +23,7 @@ class PgMetadataExporter:
         self.folder_path.mkdir(parents=True, exist_ok=True)
         logger.debug("Initialized PgMetadataExporter: folder=%s prefix=%s", self.folder_path, self.prefix_name)
 
-    def _extract_db_metadata(self, cursor: RealDictCursor) -> list[dict]:
+    def _extract_db_metadata(self, cursor: psycopg.rows.dict_row) -> list[dict]:
         query = """
         SELECT 
             t.table_name,
@@ -72,7 +70,8 @@ class PgMetadataExporter:
         cursor = None
         logger.info("Starting metadata export for database: %s", config.config_info(config.database))
         try:
-            conn = psycopg2.connect(
+            
+            conn = psycopg.connect(
                 host=config.host,
                 port=config.port,
                 user=config.user,
@@ -81,8 +80,8 @@ class PgMetadataExporter:
             )
             logger.debug("Database connection established; %s", config.config_info(config.database))
 
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            logger.debug("Created cursor with RealDictCursor")
+            cursor = conn.cursor(row_factory=psycopg.rows.dict_row)
+            logger.debug("Created cursor with dict_row")
 
             rows = self._extract_db_metadata(cursor)
             metadata = self._format_db_metadata_to_json(rows)
@@ -95,7 +94,7 @@ class PgMetadataExporter:
 
             return str(filepath)
 
-        except psycopg2.Error as e:
+        except psycopg.Error as e:
             logger.exception("Failed to export metadata: database error")
             raise Exception(f"Failed to export metadata: {e}")
         except Exception:
