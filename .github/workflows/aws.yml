@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: AWS
     permissions:
-      id-token: write   # required for OIDC
-      contents: read    # required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -21,6 +21,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.9.23"
+          cache: "pip"
+          cache-dependency-path: |
+            src/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -28,6 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Execute Script
+        working-directory: src
         env:
           DB_COUNT: ${{ vars.DB_COUNT }}
           PG_DRIFT_DB_HOST_1: ${{ secrets.PG_DRIFT_DB_HOST_1 }}
@@ -54,6 +58,7 @@ jobs:
         run: echo "value=$(date +'%d-%m-%Y-%H%M%S')" >> "$GITHUB_OUTPUT"
 
       - name: Upload output folder to S3 (timestamped)
+        working-directory: src
         env:
           S3_BUCKET_URI: ${{ vars.S3_BUCKET_URI }}
           PG_DRIFT_TARGET_FOLDER: ${{ vars.PG_DRIFT_TARGET_FOLDER }}
@@ -75,3 +80,6 @@ jobs:
           DEST="${S3_BUCKET_URI%/}/$TS/"
           echo "Uploading $LOCAL_PATH -> $DEST"
           aws s3 cp "$LOCAL_PATH" "$DEST" --recursive
+
+          echo "Uploading pgdrift-logs -> $DEST"
+          aws s3 cp pgdrift-logs "$DEST" --recursive
