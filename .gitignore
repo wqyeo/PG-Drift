@@ -209,3 +209,7 @@ __marimo__/
 # PG-Drift output directories
 pgdrift-logs/
 metadata_exports/
+
+*.json
+*.log
+*.csv

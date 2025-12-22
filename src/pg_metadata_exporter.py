@@ -6,14 +6,14 @@ from pathlib import Path
 import psycopg
 from config.pg_config import PgConfig
 
-# Module logger configuration (verbose to console)
 logger = logging.getLogger(__name__)
 
 class PgMetadataExporter:
-    def __init__(self, folder_path: str, prefix_name: str):
+    def __init__(self, folder_path: str, prefix_name: str, init_timestamp: str):
         self.folder_path = Path(folder_path)
         self.prefix_name = prefix_name
         self.folder_path.mkdir(parents=True, exist_ok=True)
+        self.init_timestamp = init_timestamp
         logger.debug("Initialized PgMetadataExporter: folder=%s prefix=%s", self.folder_path, self.prefix_name)
 
     def _extract_db_metadata(self, cursor: psycopg.rows.dict_row) -> list[dict]:
@@ -51,8 +51,7 @@ class PgMetadataExporter:
         return metadata
 
     def _generate_filepath(self, config: PgConfig) -> str:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{self.prefix_name}-{config.database}-{timestamp}.json"
+        filename = f"{self.init_timestamp}-{self.prefix_name}-{config.database}.json"
         path = str(self.folder_path / filename)
         logger.debug("Generated export filepath: %s", path)
         return path

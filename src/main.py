@@ -1,9 +1,11 @@
 import datetime
 import os
 import logging
+import hashlib
 from pathlib import Path
 from config.pg_config import PgConfig
 from pg_metadata_exporter import PgMetadataExporter
+from pg_metadata_result import PgMetadataResult
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +19,36 @@ def main():
         format='%(asctime)s %(levelname)s %(name)s - %(message)s'
     )
 
-    target_folder = os.getenv("PG_DRIFT_TARGET_FOLDER", "metadata_exports")
+    target_folder = os.getenv("PG_DRIFT_TARGET_FOLDER", "pgdrift-output")
     configs = PgConfig.load_from_env()
 
     logger.info("Starting exporting of metadata for %d databases", len(configs))
     success, failures = 0, 0
+    results = []
     for idx, config in enumerate(configs, start=1):
-        exporter = PgMetadataExporter(folder_path=target_folder, prefix_name=f"db_{idx}")
+        exporter = PgMetadataExporter(folder_path=target_folder, prefix_name=f"db_{idx}", init_timestamp=timestamp)
         try:
             filepath = exporter.export(config)
+            
+            # Calculate checksum of the exported file
+            with open(filepath, 'rb') as f:
+                file_hash = hashlib.sha256(f.read()).hexdigest()
+
+            result = PgMetadataResult(metadata_filepath=filepath, checksum=file_hash, pg_config=config)
+            results.append(result)
+            
             success += 1
             logger.debug("Exported metadata for database.\n%s\nOutput Path: %s", config.config_info(), filepath)
+            logger.info(f"db_{idx} exported to {filepath} with checksum {file_hash}")
+            logger.info("Checksum for db_%d: %s", idx, file_hash)
         except Exception as e:
             failures += 1
             logger.error("Failed to export metadata for database.\n%s\n%s", config.config_info(), e)
     
     logger.info("Completed metadata export: %d successes, %d failures", success, failures)
+    
+    PgMetadataResult.output_tabulation_table(results, target_folder, timestamp)
+
 
 if __name__ == "__main__":
     main()
