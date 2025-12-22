@@ -24,7 +24,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ls
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -55,12 +54,12 @@ jobs:
         run: echo "value=$(date +'%d-%m-%Y-%H%M%S')" >> "$GITHUB_OUTPUT"
 
       - name: Upload output folder to S3 (timestamped)
-        working-directory: src
         env:
           S3_BUCKET_URI: ${{ vars.S3_BUCKET_URI }}
           PG_DRIFT_TARGET_FOLDER: ${{ vars.PG_DRIFT_TARGET_FOLDER }}
           TS: ${{ steps.ts.outputs.value }}
         run: |
+          ls
           if [ -z "$PG_DRIFT_TARGET_FOLDER" ]; then
             echo "PG_DRIFT_TARGET_FOLDER is not set"
             exit 1
